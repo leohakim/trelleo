@@ -1,0 +1,12 @@
+django==5.1.7
+django-tailwind==3.8.0
+django-htmx==1.23.0
+python-dotenv==1.1.0
+whitenoise==6.9.0
+dj-database-url==2.3.0
+gunicorn==21.2.0
+
+# Testing
+pytest==8.0.0
+pytest-django==4.7.0
+bandit==1.8.3

@@ -1,0 +1,41 @@
+{% extends 'base/base.html' %}
+
+{% block title %}Trelleo - Manage Your Projects Efficiently{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <div class="text-center mb-12">
+        <h1 class="text-4xl font-bold text-blue-700 mb-4">Welcome to Trelleo</h1>
+        <p class="text-xl text-gray-600">A powerful Trello-like board application for managing your web apps, SaaS, and microSaaS projects</p>
+    </div>
+    
+    <div class="bg-white rounded-lg shadow-md p-8 mb-8">
+        <h2 class="text-2xl font-semibold mb-4">Organize your projects with ease</h2>
+        <p class="mb-4">Trelleo helps you organize your projects into boards, lists, and cards. Collaborate with team members, track progress, and stay on top of your tasks.</p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+            <div class="bg-blue-50 p-4 rounded-md">
+                <h3 class="font-bold text-lg mb-2">Boards</h3>
+                <p>Create boards for different projects or workspaces.</p>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-md">
+                <h3 class="font-bold text-lg mb-2">Lists</h3>
+                <p>Organize your workflow with customizable lists.</p>
+            </div>
+            <div class="bg-blue-50 p-4 rounded-md">
+                <h3 class="font-bold text-lg mb-2">Cards</h3>
+                <p>Break down tasks into manageable cards with details.</p>
+            </div>
+        </div>
+    </div>
+    
+    <div class="flex justify-center space-x-4">
+        {% if user.is_authenticated %}
+            <a href="{% url 'boards:board_list' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">Go to My Boards</a>
+        {% else %}
+            <a href="{% url 'login' %}" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg">Log In</a>
+            <a href="{% url 'boards:register' %}" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-3 px-6 rounded-lg">Sign Up</a>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

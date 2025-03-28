@@ -1,0 +1,8 @@
+[bandit]
+exclude_dirs = [
+    "tests",
+    "*/tests/*",
+    "*/test_*",
+    "*/conftest.py",
+]
+skips = ["B101"]
