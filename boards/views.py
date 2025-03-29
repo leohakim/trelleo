@@ -4,9 +4,10 @@ from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth.models import User
-from django.db.models import Max
+from django.db.models import Max, Q
 from django.http import HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
+from django.urls import reverse
 from django.views.decorators.http import require_POST
 
 from boards.models import Attachment, Board, Card, Comment, Label, List
@@ -50,15 +51,93 @@ def profile(request):
 def board_list(request):
     """Display all boards the user has access to"""
     user = request.user
-    owned_boards = Board.objects.filter(owner=user)
-    member_boards = user.member_boards.all()
+    boards = Board.objects.filter(Q(owner=user) | Q(members=user)).distinct()
 
     context = {
-        "owned_boards": owned_boards,
-        "member_boards": member_boards,
+        "boards": boards,
     }
 
     return render(request, "boards/board_list.html", context)
+
+
+@login_required
+def create_board_form(request):
+    """Display the form for creating a new board"""
+    colors = [
+        "#0079BF",  # Blue
+        "#D29034",  # Orange
+        "#519839",  # Green
+        "#B04632",  # Red
+        "#89609E",  # Purple
+        "#CD5A91",  # Pink
+        "#4BBF6B",  # Lime
+        "#00AECC",  # Sky
+        "#838C91",  # Grey
+    ]
+
+    context = {
+        "colors": colors,
+    }
+
+    return render(request, "boards/board_create_form.html", context)
+
+
+@login_required
+def edit_board_form(request, board_id):
+    """Display the form for editing a board"""
+    board = get_object_or_404(Board, id=board_id, owner=request.user)
+
+    colors = [
+        "#0079BF",  # Blue
+        "#D29034",  # Orange
+        "#519839",  # Green
+        "#B04632",  # Red
+        "#89609E",  # Purple
+        "#CD5A91",  # Pink
+        "#4BBF6B",  # Lime
+        "#00AECC",  # Sky
+        "#838C91",  # Grey
+    ]
+
+    context = {
+        "board": board,
+        "colors": colors,
+    }
+
+    return render(request, "boards/board_edit_form.html", context)
+
+
+@login_required
+def delete_board_form(request, board_id):
+    """Display the confirmation form for deleting a board"""
+    board = get_object_or_404(Board, id=board_id, owner=request.user)
+
+    context = {
+        "board": board,
+    }
+
+    return render(request, "boards/board_delete_form.html", context)
+
+
+@login_required
+def search_boards(request):
+    """Search for boards by title or description"""
+    query = request.POST.get("query", "")
+    user = request.user
+
+    if query:
+        boards = Board.objects.filter(
+            (Q(owner=user) | Q(members=user))
+            & (Q(title__icontains=query) | Q(description__icontains=query))
+        ).distinct()
+    else:
+        boards = Board.objects.filter(Q(owner=user) | Q(members=user)).distinct()
+
+    context = {
+        "boards": boards,
+    }
+
+    return render(request, "boards/board_grid.html", context)
 
 
 @login_required
@@ -83,11 +162,39 @@ def board_create(request):
             List.objects.create(title="Done", board=board, position=3)
 
             messages.success(request, f'Board "{title}" created successfully.')
-            return redirect("boards:board_detail", slug=board.slug)
+
+            # If request is from HTMX, close the modal and redirect via JavaScript
+            if request.htmx:
+                response = HttpResponse()
+                response["HX-Redirect"] = reverse("boards:board_list")
+                return response
+
+            return redirect("boards:board_list")
         else:
             messages.error(request, "Title is required.")
 
-    return render(request, "boards/board_create.html")
+    # Get color options for the form
+    colors = [
+        "#0079BF",  # Blue
+        "#70B500",  # Green
+        "#FF9F1A",  # Orange
+        "#EB5A46",  # Red
+        "#C377E0",  # Purple
+        "#00C2E0",  # Cyan
+        "#51E898",  # Mint
+        "#FF78CB",  # Pink
+        "#344563",  # Dark blue
+        "#F2D600",  # Yellow
+    ]
+
+    context = {
+        "colors": colors,
+    }
+
+    if request.htmx:
+        return render(request, "boards/board_create_form.html", context)
+
+    return render(request, "boards/board_create.html", context)
 
 
 @login_required
@@ -103,6 +210,12 @@ def board_detail(request, slug):
         messages.error(request, "You don't have access to this board.")
         return redirect("boards:board_list")
 
+    # Get current date and date for "soon" (3 days from now)
+    from datetime import date, timedelta
+
+    today = date.today()
+    soon = today + timedelta(days=3)
+
     lists = board.lists.all().prefetch_related("cards")
     labels = board.labels.all()
 
@@ -110,7 +223,25 @@ def board_detail(request, slug):
         "board": board,
         "lists": lists,
         "labels": labels,
+        "today": today,
+        "soon": soon,
     }
+
+    # Handle HTMX requests for specific views
+    if request.htmx or request.headers.get("X-Requested-With") == "XMLHttpRequest":
+        view = request.GET.get("view")
+        partial = request.GET.get("partial")
+        lists_only = request.GET.get("lists_only")
+
+        if view == "members":
+            return render(request, "boards/partials/board_members_modal.html", context)
+        elif view == "labels":
+            return render(request, "boards/partials/board_labels_modal.html", context)
+        elif view == "info":
+            return render(request, "boards/partials/board_info_modal.html", context)
+        elif partial == "lists" or lists_only == "true":
+            # Renderizar solo las listas para actualización parcial
+            return render(request, "boards/partials/lists_container.html", context)
 
     return render(request, "boards/board_detail.html", context)
 
@@ -137,7 +268,28 @@ def board_edit(request, slug):
             board.save()
 
             messages.success(request, f'Board "{title}" updated successfully.')
-            return redirect("boards:board_detail", slug=board.slug)
+
+            # Handle HTMX requests
+            if request.htmx:
+                # Check if the request came from the board list view
+                referer = request.META.get("HTTP_REFERER", "")
+                if "boards/" in referer and board.slug not in referer:
+                    response = HttpResponse()
+                    response["HX-Redirect"] = reverse("boards:board_list")
+                    return response
+                else:
+                    response = HttpResponse()
+                    response["HX-Redirect"] = reverse(
+                        "boards:board_detail", kwargs={"slug": board.slug}
+                    )
+                    return response
+
+            # For non-HTMX requests, check the referer to determine where to redirect
+            referer = request.META.get("HTTP_REFERER", "")
+            if "boards/" in referer and board.slug not in referer:
+                return redirect("boards:board_list")
+            else:
+                return redirect("boards:board_detail", slug=board.slug)
         else:
             messages.error(request, "Title is required.")
 
@@ -162,6 +314,13 @@ def board_delete(request, slug):
         board_title = board.title
         board.delete()
         messages.success(request, f'Board "{board_title}" deleted successfully.')
+
+        # Handle HTMX requests
+        if request.htmx:
+            response = HttpResponse()
+            response["HX-Redirect"] = reverse("boards:board_list")
+            return response
+
         return redirect("boards:board_list")
 
     context = {
@@ -270,18 +429,26 @@ def list_create(request, slug):
             # Get the highest position and add 1
             max_position = board.lists.aggregate(Max("position"))["position__max"] or 0
 
-            list_obj = List.objects.create(
-                title=title, board=board, position=max_position + 1
-            )
+            _ = List.objects.create(title=title, board=board, position=max_position + 1)
 
             messages.success(request, f'List "{title}" created successfully.')
 
             if request.htmx:
-                return render(
-                    request,
-                    "boards/partials/list.html",
-                    {"list": list_obj, "board": board},
+                # Return a response that will:
+                # 1. Close the modal
+                # 2. Trigger a reload of the lists container
+                response = HttpResponse("")
+                response["HX-Trigger"] = json.dumps(
+                    {
+                        "reload-lists": True,
+                        "closeModal": True,
+                        "htmx:notification": {
+                            "message": f'List "{title}" created successfully.',
+                            "type": "success",
+                        },
+                    }
                 )
+                return response
 
             return redirect("boards:board_detail", slug=board.slug)
         else:
@@ -319,11 +486,18 @@ def list_edit(request, pk):
             messages.success(request, f'List "{title}" updated successfully.')
 
             if request.htmx:
-                return render(
-                    request,
-                    "boards/partials/list_header.html",
-                    {"list": list_obj, "board": board},
+                response = HttpResponse("")
+                response["HX-Trigger"] = json.dumps(
+                    {
+                        "reload-lists": True,
+                        "closeModal": True,
+                        "htmx:notification": {
+                            "message": f'List "{title}" updated successfully.',
+                            "type": "success",
+                        },
+                    }
                 )
+                return response
 
             return redirect("boards:board_detail", slug=board.slug)
         else:
@@ -365,7 +539,21 @@ def list_delete(request, pk):
         messages.success(request, f'List "{list_title}" deleted successfully.')
 
         if request.htmx:
-            return HttpResponse("")
+            # Return a response that will:
+            # 1. Close the modal (via hx-swap="delete" in the template)
+            # 2. Trigger a reload of the lists container
+            response = HttpResponse("")
+            response["HX-Trigger"] = json.dumps(
+                {
+                    "reload-lists": True,
+                    "closeModal": True,
+                    "htmx:notification": {
+                        "message": f'List "{list_title}" deleted successfully.',
+                        "type": "success",
+                    },
+                }
+            )
+            return response
 
         return redirect("boards:board_detail", slug=board.slug)
 
@@ -384,13 +572,24 @@ def list_delete(request, pk):
 def list_reorder(request):
     """Reorder lists in a board using AJAX"""
     try:
-        data = json.loads(request.body)
-        board_slug = data.get("board_slug")
-        list_orders = data.get("list_orders", [])
+        # Obtener datos del formulario en lugar de JSON
+        list_id = request.POST.get("list_id")
+        position = request.POST.get("position")
 
-        board = get_object_or_404(Board, slug=board_slug)
+        if not list_id or position is None:
+            return JsonResponse({"error": "Missing required data"}, status=400)
 
-        # Check if user has access to the board
+        # Convertir position a entero
+        try:
+            position = int(position)
+        except ValueError:
+            return JsonResponse({"error": "Position must be a number"}, status=400)
+
+        # Obtener la lista y su tablero
+        list_obj = get_object_or_404(List, pk=list_id)
+        board = list_obj.board
+
+        # Verificar que el usuario tenga acceso al tablero
         if (
             board.owner != request.user
             and not board.members.filter(id=request.user.id).exists()
@@ -399,22 +598,23 @@ def list_reorder(request):
                 {"error": "You don't have access to this board."}, status=403
             )
 
-        # Update list positions
-        for order_data in list_orders:
-            list_id = order_data.get("id")
-            position = order_data.get("position")
+        # Actualizar la posición de la lista
+        list_obj.position = position
+        list_obj.save()
 
-            if list_id and position is not None:
-                try:
-                    list_obj = List.objects.get(pk=list_id, board=board)
-                    list_obj.position = position
-                    list_obj.save()
-                except List.DoesNotExist:
-                    pass
+        # Reordenar las demás listas si es necesario
+        lists = (
+            List.objects.filter(board=board).exclude(pk=list_id).order_by("position")
+        )
+        for i, other_list in enumerate(lists):
+            new_pos = i
+            if new_pos >= position:
+                new_pos += 1
+            if other_list.position != new_pos:
+                other_list.position = new_pos
+                other_list.save()
 
         return JsonResponse({"status": "success"})
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON data"}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -436,6 +636,11 @@ def card_create(request, list_id):
 
     if request.method == "POST":
         title = request.POST.get("title")
+        description = request.POST.get("description")
+        due_date = request.POST.get("due_date")
+
+        # Obtener etiquetas seleccionadas
+        label_ids = request.POST.getlist("labels")
 
         if title:
             # Get the highest position and add 1
@@ -444,15 +649,32 @@ def card_create(request, list_id):
             )
 
             card = Card.objects.create(
-                title=title, list=list_obj, position=max_position + 1
+                title=title,
+                description=description,
+                list=list_obj,
+                position=max_position + 1,
+                due_date=due_date if due_date else None,
             )
+
+            # Añadir etiquetas si se seleccionaron
+            if label_ids:
+                card.labels.set(Label.objects.filter(id__in=label_ids))
 
             messages.success(request, f'Card "{title}" created successfully.')
 
             if request.htmx:
-                return render(
-                    request, "boards/partials/card.html", {"card": card, "board": board}
+                response = HttpResponse("")
+                response["HX-Trigger"] = json.dumps(
+                    {
+                        "reload-lists": True,
+                        "closeModal": True,
+                        "htmx:notification": {
+                            "message": f'Card "{title}" created successfully.',
+                            "type": "success",
+                        },
+                    }
                 )
+                return response
 
             return redirect("boards:board_detail", slug=board.slug)
         else:
@@ -515,6 +737,10 @@ def card_edit(request, pk):
     list_obj = card.list
     board = list_obj.board
 
+    # Get board members and labels for the form
+    board_members = board.members.all()
+    labels = board.labels.all()
+
     # Check if user has access to the board
     if (
         board.owner != request.user
@@ -527,12 +753,71 @@ def card_edit(request, pk):
         title = request.POST.get("title")
         description = request.POST.get("description", "")
         due_date = request.POST.get("due_date", None)
+        is_completed = request.POST.get("is_completed") == "on"
+        list_id = request.POST.get("list_id")
+
+        # Get selected labels and members
+        label_ids = request.POST.getlist("labels")
+        member_ids = request.POST.getlist("members")
 
         if title:
             card.title = title
             card.description = description
-            card.due_date = due_date
+
+            # Handle due date properly
+            if due_date:
+                try:
+                    card.due_date = due_date
+                except ValueError:
+                    # If there's an error parsing the date, set it to None
+                    card.due_date = None
+            else:
+                card.due_date = None
+
+            # Update completion status
+            card.is_completed = is_completed
+
+            # Update list if changed
+            if list_id:
+                try:
+                    new_list = get_object_or_404(List, pk=list_id)
+                    if (
+                        new_list.board.id == board.id
+                    ):  # Ensure the list belongs to the same board
+                        card.list = new_list
+                except (ValueError, List.DoesNotExist):
+                    # If there's an error with the list_id, ignore this update
+                    pass
+
             card.save()
+
+            # Update labels
+            if label_ids:
+                card.labels.clear()
+                for label_id in label_ids:
+                    try:
+                        label = Label.objects.get(pk=label_id, board=board)
+                        card.labels.add(label)
+                    except Label.DoesNotExist:
+                        pass
+            else:
+                card.labels.clear()
+
+            # Update members
+            if member_ids:
+                card.members.clear()
+                for member_id in member_ids:
+                    try:
+                        member = User.objects.get(pk=member_id)
+                        if (
+                            member == board.owner
+                            or board.members.filter(id=member.id).exists()
+                        ):
+                            card.members.add(member)
+                    except User.DoesNotExist:
+                        pass
+            else:
+                card.members.clear()
 
             messages.success(request, f'Card "{title}" updated successfully.')
 
@@ -546,9 +831,21 @@ def card_edit(request, pk):
                         request, "boards/partials/card_description.html", {"card": card}
                     )
                 else:
-                    return redirect("boards:card_detail", pk=card.pk)
+                    # Return an HTMX response to trigger a list reload and close the modal
+                    response = HttpResponse("")
+                    response["HX-Trigger"] = json.dumps(
+                        {
+                            "reload-lists": True,
+                            "closeModal": True,
+                            "htmx:notification": {
+                                "message": f'Card "{title}" updated successfully.',
+                                "type": "success",
+                            },
+                        }
+                    )
+                    return response
 
-            return redirect("boards:card_detail", pk=card.pk)
+            return redirect("boards:board_detail", slug=board.slug)
         else:
             messages.error(request, "Title is required.")
 
@@ -567,8 +864,17 @@ def card_edit(request, pk):
             return render(
                 request, "boards/partials/card_edit_due_date_form.html", {"card": card}
             )
+        else:
+            # Return the card edit form template for direct HTMX access
+            context = {
+                "card": card,
+                "board": board,
+                "board_members": board_members,
+                "labels": labels,
+            }
+            return render(request, "boards/partials/card_edit_form.html", context)
 
-    return redirect("boards:card_detail", pk=card.pk)
+    return redirect("boards:board_detail", slug=board.slug)
 
 
 @login_required
@@ -598,14 +904,25 @@ def card_delete(request, pk):
         messages.success(request, f'Card "{card_title}" deleted successfully.')
 
         if request.htmx:
-            return HttpResponse("")
+            response = HttpResponse("")
+            response["HX-Trigger"] = json.dumps(
+                {
+                    "reload-lists": True,
+                    "closeModal": True,
+                    "htmx:notification": {
+                        "message": f'Card "{card_title}" deleted successfully.',
+                        "type": "success",
+                    },
+                }
+            )
+            return response
 
         return redirect("boards:board_detail", slug=board.slug)
 
     if request.htmx:
         return render(
             request,
-            "boards/partials/card_delete_confirm.html",
+            "boards/partials/card_delete_form.html",
             {"card": card, "board": board},
         )
 
@@ -674,14 +991,27 @@ def card_move(request, pk):
 def card_reorder(request):
     """Reorder cards in a list using AJAX"""
     try:
-        data = json.loads(request.body)
-        list_id = data.get("list_id")
-        card_orders = data.get("card_orders", [])
+        # Obtener datos del formulario en lugar de JSON
+        card_id = request.POST.get("card_id")
+        list_id = request.POST.get("list_id")
+        position = request.POST.get("position")
 
-        list_obj = get_object_or_404(List, pk=list_id)
-        board = list_obj.board
+        if not card_id or not list_id or position is None:
+            return JsonResponse({"error": "Missing required data"}, status=400)
 
-        # Check if user has access to the board
+        # Convertir position a entero
+        try:
+            position = int(position)
+        except ValueError:
+            return JsonResponse({"error": "Position must be a number"}, status=400)
+
+        # Obtener la tarjeta y las listas
+        card = get_object_or_404(Card, pk=card_id)
+        source_list = card.list
+        target_list = get_object_or_404(List, pk=list_id)
+        board = source_list.board
+
+        # Verificar que el usuario tenga acceso al tablero
         if (
             board.owner != request.user
             and not board.members.filter(id=request.user.id).exists()
@@ -690,22 +1020,38 @@ def card_reorder(request):
                 {"error": "You don't have access to this board."}, status=403
             )
 
-        # Update card positions
-        for order_data in card_orders:
-            card_id = order_data.get("id")
-            position = order_data.get("position")
+        # Actualizar la lista de la tarjeta si ha cambiado
+        if source_list.id != target_list.id:
+            card.list = target_list
 
-            if card_id and position is not None:
-                try:
-                    card = Card.objects.get(pk=card_id, list=list_obj)
-                    card.position = position
-                    card.save()
-                except Card.DoesNotExist:
-                    pass
+        # Actualizar la posición de la tarjeta
+        card.position = position
+        card.save()
+
+        # Reordenar las demás tarjetas en la lista destino
+        cards = (
+            Card.objects.filter(list=target_list)
+            .exclude(pk=card_id)
+            .order_by("position")
+        )
+        for i, other_card in enumerate(cards):
+            new_pos = i
+            if new_pos >= position:
+                new_pos += 1
+            if other_card.position != new_pos:
+                other_card.position = new_pos
+                other_card.save()
+
+        # Reordenar las tarjetas en la lista origen si es diferente de la destino
+        if source_list.id != target_list.id:
+            for i, other_card in enumerate(
+                Card.objects.filter(list=source_list).order_by("position")
+            ):
+                if other_card.position != i:
+                    other_card.position = i
+                    other_card.save()
 
         return JsonResponse({"status": "success"})
-    except json.JSONDecodeError:
-        return JsonResponse({"error": "Invalid JSON data"}, status=400)
     except Exception as e:
         return JsonResponse({"error": str(e)}, status=500)
 
@@ -1233,6 +1579,21 @@ def label_delete(request, pk):
         )
 
     return redirect("boards:board_detail", slug=board.slug)
+
+
+# Notifications view
+@login_required
+def get_notifications(request):
+    """Return pending notifications as JSON"""
+    from django.contrib.messages import get_messages
+
+    messages_list = []
+    storage = get_messages(request)
+
+    for message in storage:
+        messages_list.append({"message": str(message), "tags": message.tags})
+
+    return JsonResponse({"messages": messages_list})
 
 
 # Home view

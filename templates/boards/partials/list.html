@@ -1,0 +1,57 @@
+<!-- Individual list component -->
+<div 
+  id="list-{{ list.id }}" 
+  class="list-container bg-white rounded-md shadow-sm border border-gray-200 flex flex-col"
+  data-list-id="{{ list.id }}"
+  data-position="{{ list.position }}">
+  
+  <!-- List Header -->
+  <div class="list-header p-2 flex justify-between items-center cursor-move bg-gray-100 border-b border-gray-200 rounded-t-md">
+    <h3 class="text-sm font-medium text-gray-800 truncate flex-1">{{ list.title }}</h3>
+    
+    <!-- List Actions -->
+    <div class="flex items-center space-x-1">
+      <!-- Edit List Button -->
+      <button 
+        class="text-gray-500 hover:text-gray-700 transition-colors p-0.5 rounded hover:bg-gray-200"
+        hx-get="{% url 'boards:list_edit' list.id %}"
+        hx-target="#modal-container"
+        hx-trigger="click"
+        hx-swap="innerHTML">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path></svg>
+      </button>
+      
+      <!-- Delete List Button -->
+      <button 
+        class="text-gray-500 hover:text-red-600 transition-colors p-0.5 rounded hover:bg-gray-200"
+        hx-get="{% url 'boards:list_delete' list.id %}"
+        hx-target="#modal-container"
+        hx-trigger="click"
+        hx-swap="innerHTML">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+      </button>
+    </div>
+  </div>
+  
+  <!-- Cards Container -->
+  <div 
+    class="cards-container flex-1 p-2 space-y-2 overflow-y-auto min-h-[50px] max-h-[calc(80vh-180px)]" 
+    data-list-id="{{ list.id }}">
+    {% for card in list.cards.all %}
+      {% include "boards/partials/card.html" with card=card %}
+    {% endfor %}
+  </div>
+  
+  <!-- Add Card Button -->
+  <div class="px-2 pb-2 pt-1">
+    <button 
+      class="w-full text-left p-1.5 text-gray-600 bg-gray-100 hover:bg-gray-200 rounded transition-colors text-sm flex items-center"
+      hx-get="{% url 'boards:card_create' list.id %}"
+      hx-target="#modal-container"
+      hx-trigger="click"
+      hx-swap="innerHTML">
+      <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="inline-block h-4 w-4 mr-1"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+      Add a card
+    </button>
+  </div>
+</div>

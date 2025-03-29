@@ -1,0 +1,226 @@
+<!-- Modal for editing a card -->
+<div class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center" role="dialog">
+  <div class="w-full max-w-5xl bg-white rounded-lg shadow-xl overflow-hidden">
+    <!-- Modal Header -->
+    <div class="px-6 py-3 bg-gray-50 border-b border-gray-200 flex justify-between items-center">
+      <div>
+        <h2 class="text-xl font-semibold text-gray-900">Edit Card</h2>
+        <p class="text-sm text-gray-500 mt-1">Update card details in "{{ card.list.title }}"</p>
+      </div>
+      <button 
+        type="button"
+        class="text-gray-400 hover:text-gray-500 focus:outline-none"
+        onclick="document.getElementById('modal-container').innerHTML = ''">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-6 w-6"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+        <span class="sr-only">Close modal</span>
+      </button>
+    </div>
+    
+    <form hx-post="{% url 'boards:card_edit' card.id %}" 
+          hx-trigger="submit"
+          class="flex">
+      {% csrf_token %}
+      
+      <!-- Left Column: Main Card Information -->
+      <div class="w-2/3 p-6 border-r border-gray-200">
+        <div class="grid grid-cols-2 gap-4">
+          <!-- Title Field -->
+          <div class="col-span-2">
+            <label for="title" class="block text-sm font-medium text-gray-700 mb-1">Card Title</label>
+            <input 
+              type="text" 
+              id="title" 
+              name="title" 
+              required
+              value="{{ card.title }}"
+              class="w-full px-3 py-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white"
+              placeholder="Enter card title"
+              autofocus>
+          </div>
+          
+          <!-- Description Field -->
+          <div class="col-span-2">
+            <label for="description" class="block text-sm font-medium text-gray-700 mb-1">Description</label>
+            <textarea 
+              id="description" 
+              name="description" 
+              class="w-full px-3 py-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white h-24 resize-none"
+              placeholder="Enter card description">{{ card.description }}</textarea>
+          </div>
+          
+          <!-- Due Date and Completed Fields in one row -->
+          <div>
+            <label for="due_date" class="block text-sm font-medium text-gray-700 mb-1">Due Date (optional)</label>
+            <input 
+              type="date" 
+              id="due_date" 
+              name="due_date" 
+              value="{% if card.due_date %}{{ card.due_date|date:'Y-m-d' }}{% endif %}"
+              class="w-full px-3 py-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white">
+          </div>
+          
+          <div class="flex items-center">
+            <div class="flex items-center space-x-2 bg-gray-50 border border-gray-200 rounded-md p-3 w-full">
+              <input 
+                type="checkbox" 
+                id="is_completed" 
+                name="is_completed" 
+                {% if card.is_completed %}checked{% endif %}
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+              <label for="is_completed" class="text-sm font-medium text-gray-700">
+                Mark as completed
+              </label>
+            </div>
+          </div>
+          
+          <!-- List Selection -->
+          <div>
+            <label for="list_id" class="block text-sm font-medium text-gray-700 mb-1">List</label>
+            <select 
+              id="list_id" 
+              name="list_id" 
+              class="w-full px-3 py-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white">
+              {% for list in board.lists.all %}
+              <option value="{{ list.id }}" {% if list.id == card.list.id %}selected{% endif %}>{{ list.title }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          
+          <!-- Preview Section -->
+          <div class="bg-gray-50 border border-gray-200 rounded-md p-3">
+            <h3 class="text-xs font-medium text-gray-700 mb-2">Card Preview</h3>
+            <div class="bg-white border border-gray-200 rounded-md shadow-sm p-3">
+              <h4 id="preview-title" class="font-medium text-gray-800 text-sm mb-1">{{ card.title }}</h4>
+              <p id="preview-description" class="text-xs text-gray-500 mb-2 line-clamp-2">{{ card.description|default:"No description" }}</p>
+              <div id="preview-due-date" class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded inline-flex items-center" {% if not card.due_date %}style="display: none;"{% endif %}>
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-3 w-3 mr-1"><rect width="18" height="18" x="3" y="4" rx="2" ry="2"></rect><line x1="16" x2="16" y1="2" y2="6"></line><line x1="8" x2="8" y1="2" y2="6"></line><line x1="3" x2="21" y1="10" y2="10"></line></svg>
+                <span>{% if card.due_date %}{{ card.due_date|date:'d M Y' }}{% endif %}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Right Column: Labels, Members and Actions -->
+      <div class="w-1/3 p-6 bg-gray-50">
+        <!-- Labels Field -->
+        {% if labels %}
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Labels</label>
+          <div class="grid grid-cols-1 gap-2 bg-white border border-gray-200 rounded-md p-3 max-h-32 overflow-y-auto">
+            {% for label in labels %}
+            <div class="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="label_{{ label.id }}" 
+                name="labels" 
+                value="{{ label.id }}"
+                {% if label in card.labels.all %}checked{% endif %}
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+              <label for="label_{{ label.id }}" class="flex items-center cursor-pointer">
+                <span class="inline-block h-3 w-6 rounded-sm mr-2" style="background-color: {{ label.color }}"></span>
+                <span class="text-sm text-gray-700">{{ label.name }}</span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Members Field -->
+        {% if board_members %}
+        <div class="mb-4">
+          <label class="block text-sm font-medium text-gray-700 mb-2">Assign Members</label>
+          <div class="grid grid-cols-1 gap-2 bg-white border border-gray-200 rounded-md p-3 max-h-32 overflow-y-auto">
+            {% for member in board_members %}
+            <div class="flex items-center space-x-2">
+              <input 
+                type="checkbox" 
+                id="member_{{ member.id }}" 
+                name="members" 
+                value="{{ member.id }}"
+                {% if member in card.members.all %}checked{% endif %}
+                class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+              <label for="member_{{ member.id }}" class="flex items-center space-x-2 cursor-pointer">
+                <div class="bg-blue-600 flex items-center justify-center h-6 w-6 rounded-full text-xs font-medium text-white">
+                  {{ member.username|slice:":1" }}
+                </div>
+                <span class="text-sm text-gray-700">{{ member.username }}</span>
+              </label>
+            </div>
+            {% endfor %}
+          </div>
+        </div>
+        {% endif %}
+        
+        <!-- Form Actions -->
+        <div class="flex flex-col space-y-2 mt-auto pt-4">
+          <button 
+            type="submit" 
+            class="w-full px-4 py-2 bg-blue-600 border border-transparent rounded-md text-sm font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 inline-flex items-center justify-center">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 mr-2"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path><polyline points="17 21 17 13 7 13 7 21"></polyline><polyline points="7 3 7 8 15 8"></polyline></svg>
+            Save Changes
+          </button>
+          
+          <button 
+            type="button"
+            class="w-full px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+            onclick="document.getElementById('modal-container').innerHTML = ''">
+            Cancel
+          </button>
+          
+          <button 
+            type="button"
+            class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 rounded-md flex items-center justify-center mt-2"
+            hx-get="{% url 'boards:card_delete' card.id %}"
+            hx-target="#modal-container"
+            hx-swap="innerHTML">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-4 w-4 mr-2"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+            Delete Card
+          </button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- Script for live preview -->
+<script>
+  (function() {
+    function initializePreview() {
+      const titleInput = document.getElementById('title');
+      const descriptionInput = document.getElementById('description');
+      const dueDateInput = document.getElementById('due_date');
+      const previewTitle = document.getElementById('preview-title');
+      const previewDescription = document.getElementById('preview-description');
+      const previewDueDate = document.getElementById('preview-due-date');
+      
+      if (!titleInput || !descriptionInput || !dueDateInput || !previewTitle || !previewDescription || !previewDueDate) {
+        return;
+      }
+      
+      titleInput.addEventListener('input', function() {
+        previewTitle.textContent = this.value || 'Card Title';
+      });
+      
+      descriptionInput.addEventListener('input', function() {
+        previewDescription.textContent = this.value || 'No description';
+      });
+      
+      dueDateInput.addEventListener('input', function() {
+        if (this.value) {
+          const date = new Date(this.value);
+          const options = { day: 'numeric', month: 'short', year: 'numeric' };
+          previewDueDate.querySelector('span').textContent = date.toLocaleDateString('en-US', options);
+          previewDueDate.style.display = 'inline-flex';
+        } else {
+          previewDueDate.style.display = 'none';
+        }
+      });
+    }
+    
+    initializePreview();
+    document.addEventListener('DOMContentLoaded', initializePreview);
+    setTimeout(initializePreview, 300);
+  })();
+</script>

@@ -1,0 +1,7 @@
+{% if card.title %}
+  <div class="bg-gray-50 p-4 rounded-md text-gray-700">
+    {{ card.title }}
+  </div>
+{% else %}
+  <p class="text-gray-500 italic">No title provided</p>
+{% endif %}

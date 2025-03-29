@@ -1,0 +1,90 @@
+<!-- Modal for managing board members -->
+<div class="fixed inset-0 z-50 bg-black/70" aria-hidden="true" role="dialog">
+  <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
+    <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+      <h2 class="text-lg font-semibold leading-none tracking-tight">Manage Members</h2>
+      <p class="text-sm text-muted-foreground">Add or remove members from this board</p>
+    </div>
+    
+    <!-- Current Members -->
+    <div>
+      <h3 class="text-sm font-medium text-gray-500 mb-2">Current Members</h3>
+      
+      <div class="space-y-2">
+        <!-- Board Owner -->
+        <div class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+          <div class="flex items-center">
+            <div class="bg-blue-600 flex items-center justify-center h-8 w-8 rounded-full text-xs font-medium text-white mr-2">
+              {{ board.owner.username|slice:":1" }}
+            </div>
+            <div>
+              <p class="font-medium">{{ board.owner.username }}</p>
+              <p class="text-xs text-gray-500">Owner</p>
+            </div>
+          </div>
+        </div>
+        
+        <!-- Board Members -->
+        {% for member in board.members.all %}
+          <div class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+            <div class="flex items-center">
+              <div class="bg-blue-600 flex items-center justify-center h-8 w-8 rounded-full text-xs font-medium text-white mr-2">
+                {{ member.username|slice:":1" }}
+              </div>
+              <p class="font-medium">{{ member.username }}</p>
+            </div>
+            
+            {% if board.owner == request.user %}
+              <button 
+                class="text-red-600 hover:text-red-800"
+                hx-post="{% url 'boards:remove_member' board.slug member.id %}"
+                hx-confirm="Are you sure you want to remove {{ member.username }} from this board?"
+                hx-target="#modal-container"
+                hx-swap="innerHTML">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              </button>
+            {% endif %}
+          </div>
+        {% empty %}
+          <p class="text-sm text-gray-500 italic">No additional members</p>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <!-- Add Member Form -->
+    {% if board.owner == request.user %}
+      <div class="border-t pt-4">
+        <h3 class="text-sm font-medium text-gray-500 mb-2">Add New Member</h3>
+        
+        <form hx-post="{% url 'boards:add_member' board.slug %}" hx-target="#modal-container" hx-swap="innerHTML" class="space-y-4">
+          {% csrf_token %}
+          
+          <div class="flex space-x-2">
+            <input 
+              type="text" 
+              name="username" 
+              required
+              class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+              placeholder="Enter username">
+            
+            <button 
+              type="submit" 
+              class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+              Add
+            </button>
+          </div>
+        </form>
+      </div>
+    {% endif %}
+    
+    <!-- Close Button -->
+    <div class="flex justify-end">
+      <button 
+        type="button" 
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        onclick="document.getElementById('modal-container').innerHTML = ''">
+        Close
+      </button>
+    </div>
+  </div>
+</div>

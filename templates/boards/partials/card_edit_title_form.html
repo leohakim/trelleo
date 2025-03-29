@@ -1,0 +1,30 @@
+<div class="bg-gray-50 p-4 rounded-md">
+  <form hx-post="{% url 'boards:card_edit' card.id %}" hx-swap="outerHTML" hx-target="#description-content">
+    {% csrf_token %}
+    <input type="hidden" name="card_title" value="1">
+    <div class="space-y-2">
+      <input 
+        type="text" 
+        name="title" 
+        value="{{ card.title }}"
+        required
+        class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+        placeholder="Card title">
+    </div>
+    <div class="flex justify-end space-x-2 mt-2">
+      <button 
+        type="button" 
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-8 px-3 py-1"
+        hx-get="{% url 'boards:card_detail' card.id %}"
+        hx-target="#description-content"
+        hx-swap="outerHTML">
+        Cancel
+      </button>
+      <button 
+        type="submit" 
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-8 px-3 py-1">
+        Save
+      </button>
+    </div>
+  </form>
+</div>

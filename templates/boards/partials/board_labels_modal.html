@@ -1,0 +1,119 @@
+<!-- Modal for managing board labels -->
+<div class="fixed inset-0 z-50 bg-black/70" aria-hidden="true" role="dialog">
+  <div class="fixed left-[50%] top-[50%] z-50 grid w-full max-w-lg translate-x-[-50%] translate-y-[-50%] gap-4 border bg-white p-6 shadow-lg duration-200 sm:rounded-lg md:w-full">
+    <div class="flex flex-col space-y-1.5 text-center sm:text-left">
+      <h2 class="text-lg font-semibold leading-none tracking-tight">Manage Labels</h2>
+      <p class="text-sm text-muted-foreground">Create, edit or delete labels for this board</p>
+    </div>
+    
+    <!-- Current Labels -->
+    <div>
+      <h3 class="text-sm font-medium text-gray-500 mb-2">Current Labels</h3>
+      
+      <div class="space-y-2">
+        {% for label in labels %}
+          <div class="flex items-center justify-between bg-gray-50 p-3 rounded-md">
+            <div class="flex items-center">
+              <div class="h-6 w-6 rounded-sm mr-3" style="background-color: {{ label.color }}"></div>
+              <p class="font-medium">{{ label.name }}</p>
+            </div>
+            
+            <div class="flex space-x-2">
+              <button 
+                class="text-gray-500 hover:text-gray-700"
+                hx-get="{% url 'boards:edit_label' label.id %}"
+                hx-target="#modal-container"
+                hx-swap="innerHTML">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"></path><path d="m15 5 4 4"></path></svg>
+              </button>
+              
+              <button 
+                class="text-red-600 hover:text-red-800"
+                hx-delete="{% url 'boards:delete_label' label.id %}"
+                hx-confirm="Are you sure you want to delete this label?"
+                hx-target="#modal-container"
+                hx-swap="innerHTML">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="h-5 w-5"><path d="M3 6h18"></path><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"></path><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2"></path></svg>
+              </button>
+            </div>
+          </div>
+        {% empty %}
+          <p class="text-sm text-gray-500 italic">No labels created yet</p>
+        {% endfor %}
+      </div>
+    </div>
+    
+    <!-- Create Label Form -->
+    <div class="border-t pt-4">
+      <h3 class="text-sm font-medium text-gray-500 mb-2">Create New Label</h3>
+      
+      <form hx-post="{% url 'boards:create_label' board.slug %}" hx-target="#modal-container" hx-swap="innerHTML" class="space-y-4">
+        {% csrf_token %}
+        
+        <div class="space-y-2">
+          <label for="name" class="text-sm font-medium leading-none">Label Name</label>
+          <input 
+            type="text" 
+            id="name" 
+            name="name" 
+            required
+            class="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+            placeholder="Enter label name">
+        </div>
+        
+        <div class="space-y-2">
+          <label for="color" class="text-sm font-medium leading-none">Color</label>
+          <div class="grid grid-cols-5 gap-2">
+            <input type="radio" name="color" value="#61BD4F" id="color-green" class="sr-only" checked>
+            <label for="color-green" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #61BD4F"></label>
+            
+            <input type="radio" name="color" value="#F2D600" id="color-yellow" class="sr-only">
+            <label for="color-yellow" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #F2D600"></label>
+            
+            <input type="radio" name="color" value="#FF9F1A" id="color-orange" class="sr-only">
+            <label for="color-orange" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #FF9F1A"></label>
+            
+            <input type="radio" name="color" value="#EB5A46" id="color-red" class="sr-only">
+            <label for="color-red" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #EB5A46"></label>
+            
+            <input type="radio" name="color" value="#C377E0" id="color-purple" class="sr-only">
+            <label for="color-purple" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #C377E0"></label>
+            
+            <input type="radio" name="color" value="#0079BF" id="color-blue" class="sr-only">
+            <label for="color-blue" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #0079BF"></label>
+            
+            <input type="radio" name="color" value="#00C2E0" id="color-sky" class="sr-only">
+            <label for="color-sky" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #00C2E0"></label>
+            
+            <input type="radio" name="color" value="#51E898" id="color-lime" class="sr-only">
+            <label for="color-lime" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #51E898"></label>
+            
+            <input type="radio" name="color" value="#FF78CB" id="color-pink" class="sr-only">
+            <label for="color-pink" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #FF78CB"></label>
+            
+            <input type="radio" name="color" value="#344563" id="color-black" class="sr-only">
+            <label for="color-black" class="block h-8 rounded-md cursor-pointer border-2 border-transparent hover:border-gray-400" style="background-color: #344563"></label>
+          </div>
+        </div>
+        
+        <div class="flex justify-end">
+          <button 
+            type="submit" 
+            class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2">
+            Create Label
+          </button>
+        </div>
+      </form>
+    </div>
+    
+    <!-- Close Button -->
+    <div class="flex justify-end border-t pt-4">
+      <button 
+        type="button" 
+        class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+        onclick="document.getElementById('modal-container').innerHTML = ''">
+        Close
+      </button>
+    </div>
+  </div>
+</div>

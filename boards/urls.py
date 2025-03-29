@@ -13,6 +13,15 @@ urlpatterns = [
     path("boards/<slug:slug>/", views.board_detail, name="board_detail"),
     path("boards/<slug:slug>/edit/", views.board_edit, name="board_edit"),
     path("boards/<slug:slug>/delete/", views.board_delete, name="board_delete"),
+    # HTMX Board interactions
+    path("create-form/", views.create_board_form, name="create_board_form"),
+    path("<uuid:board_id>/edit-form/", views.edit_board_form, name="edit_board_form"),
+    path(
+        "<uuid:board_id>/delete-form/",
+        views.delete_board_form,
+        name="delete_board_form",
+    ),
+    path("search/", views.search_boards, name="search_boards"),
     # List views
     path("boards/<slug:slug>/lists/create/", views.list_create, name="list_create"),
     path("lists/<uuid:pk>/edit/", views.list_edit, name="list_edit"),
@@ -82,4 +91,6 @@ urlpatterns = [
         views.card_remove_member,
         name="card_remove_member",
     ),
+    # Notifications
+    path("notifications/", views.get_notifications, name="get_notifications"),
 ]

@@ -1,0 +1,7 @@
+{% if card.description %}
+  <div class="bg-gray-50 p-4 rounded-md text-gray-700">
+    {{ card.description|linebreaks }}
+  </div>
+{% else %}
+  <p class="text-gray-500 italic">No description provided</p>
+{% endif %}

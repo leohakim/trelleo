@@ -1,0 +1,83 @@
+<!-- Modal for editing a list -->
+<div class="fixed inset-0 z-50 bg-black/70 flex items-center justify-center" aria-hidden="true" role="dialog">
+  <div class="w-full max-w-md bg-white rounded-lg shadow-xl overflow-hidden">
+    <!-- Modal Header -->
+    <div class="px-6 py-4 bg-gray-50 border-b border-gray-200">
+      <h2 class="text-xl font-semibold text-gray-900">Edit List</h2>
+      <p class="text-sm text-gray-500 mt-1">Update list "{{ list.title }}" from board "{{ board.title }}"</p>
+    </div>
+    
+    <form id="list-edit-form" hx-post="{% url 'boards:list_edit' list.id %}" hx-target="#modal-container" class="px-6 py-4">
+      {% csrf_token %}
+      
+      <!-- Title Field -->
+      <div class="mb-4">
+        <label for="title" class="block text-sm font-medium text-gray-700 mb-1">List Title</label>
+        <input 
+          type="text" 
+          id="title" 
+          name="title" 
+          required
+          value="{{ list.title }}"
+          class="w-full px-3 py-2 bg-gray-50 text-gray-900 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 focus:bg-white"
+          placeholder="Enter list title"
+          autofocus>
+      </div>
+      
+      <!-- Preview Section -->
+      <div class="bg-gray-50 border border-gray-200 rounded-md p-4 mb-4">
+        <h3 class="text-sm font-medium text-gray-700 mb-3">List Preview</h3>
+        <div class="space-y-4">
+          <!-- Vista previa de la lista -->
+          <div class="w-48 mx-auto bg-white border border-gray-200 rounded-md shadow-sm overflow-hidden">
+            <div class="bg-gray-100 px-3 py-2 border-b border-gray-200">
+              <p id="preview-title" class="font-medium text-gray-800 text-sm truncate">{{ list.title }}</p>
+            </div>
+            <div class="p-3 flex items-center justify-center h-16">
+              <p class="text-xs text-gray-400">{{ list.cards.count }} card(s)</p>
+            </div>
+          </div>
+          <!-- Texto informativo -->
+          <div class="text-center">
+            <p class="text-sm text-gray-600">Puedes reordenar esta lista arrastrándola en el tablero.</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Form Actions -->
+      <div class="flex flex-col-reverse sm:flex-row sm:justify-end sm:space-x-2">
+        <button 
+          type="button" 
+          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 border border-input bg-background hover:bg-accent hover:text-accent-foreground h-10 px-4 py-2"
+          onclick="document.getElementById('modal-container').innerHTML = ''">
+          Cancel
+        </button>
+        <button 
+          type="submit" 
+          class="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-blue-600 text-white hover:bg-blue-700 h-10 px-4 py-2">
+          Save Changes
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  (function() {
+    function initializePreview() {
+      const titleInput = document.getElementById('title');
+      const previewTitle = document.getElementById('preview-title');
+      
+      if (titleInput && previewTitle) {
+        // Actualizar la vista previa cuando cambia el título
+        titleInput.addEventListener('input', function() {
+          previewTitle.textContent = this.value || 'List Title';
+        });
+      }
+    }
+    
+    initializePreview();
+    document.addEventListener('DOMContentLoaded', initializePreview);
+    setTimeout(initializePreview, 300);
+  })();
+</script>
